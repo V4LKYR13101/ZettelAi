@@ -122,7 +122,6 @@ npm run build
 ### Window Controls
 - **Settings button**: Open configuration panel
 - **Notes button**: Access note-taking interface
-- **Ctrl+Shift+G**: Toggle widget visibility
 - **Minimize button**: Hide widget
 - **Close button**: Quit application
 
