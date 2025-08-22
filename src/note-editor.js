@@ -7,6 +7,7 @@ class NoteEditor {
         this.isDirty = false;
         this.autoSaveTimer = null;
         this.isRecording = false;
+        this.shouldBeRecording = false;
         this.recognition = null;
         
         this.initializeElements();
@@ -341,8 +342,13 @@ class NoteEditor {
             this.recognition.continuous = true;
             this.recognition.interimResults = true;
             this.recognition.lang = 'en-US';
+            this.recognition.maxAlternatives = 1;
+            
+            // Check for microphone permission
+            this.checkMicrophonePermission();
             
             this.recognition.onstart = () => {
+                console.log('Note editor speech recognition started');
                 this.isRecording = true;
                 this.voiceBtn.classList.add('recording');
                 this.voiceRecording.style.display = 'flex';
@@ -350,31 +356,51 @@ class NoteEditor {
             
             this.recognition.onresult = (event) => {
                 let finalTranscript = '';
-                let interimTranscript = '';
                 
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                     const transcript = event.results[i][0].transcript;
                     if (event.results[i].isFinal) {
                         finalTranscript += transcript;
-                    } else {
-                        interimTranscript += transcript;
                     }
                 }
                 
-                if (finalTranscript) {
+                if (finalTranscript.trim()) {
                     const currentContent = this.contentTextarea.value;
-                    const newContent = currentContent + (currentContent ? ' ' : '') + finalTranscript;
+                    const newContent = currentContent + (currentContent ? ' ' : '') + finalTranscript.trim();
                     this.contentTextarea.value = newContent;
                     this.handleContentChange();
                 }
             };
             
             this.recognition.onend = () => {
-                this.stopVoiceRecording();
+                console.log('Note editor speech recognition ended');
+                if (this.shouldBeRecording) {
+                    // Auto-restart if we're still supposed to be recording
+                    setTimeout(() => this.restartSpeechRecognition(), 100);
+                } else {
+                    this.stopVoiceRecording();
+                }
             };
             
             this.recognition.onerror = (event) => {
-                console.error('Speech recognition error:', event.error);
+                console.error('Note editor speech recognition error:', event.error);
+                
+                switch (event.error) {
+                    case 'not-allowed':
+                        alert('Microphone access was denied. Please allow microphone access and try again.');
+                        break;
+                    case 'no-speech':
+                        console.log('No speech detected in note editor, restarting...');
+                        this.restartSpeechRecognition();
+                        return;
+                    case 'network':
+                        console.log('Network error in note editor, will retry...');
+                        setTimeout(() => this.restartSpeechRecognition(), 1000);
+                        return;
+                    default:
+                        console.log('Note editor speech recognition error:', event.error);
+                }
+                
                 this.stopVoiceRecording();
             };
         } else {
@@ -393,18 +419,68 @@ class NoteEditor {
 
     startVoiceRecording() {
         if (this.recognition && !this.isRecording) {
-            this.recognition.start();
+            this.shouldBeRecording = true;
+            try {
+                this.recognition.start();
+            } catch (error) {
+                console.error('Failed to start note editor speech recognition:', error);
+                if (error.name === 'InvalidStateError') {
+                    // Recognition is already running, just mark as recording
+                    this.isRecording = true;
+                    this.voiceBtn.classList.add('recording');
+                    this.voiceRecording.style.display = 'flex';
+                }
+            }
         }
     }
 
     stopVoiceRecording() {
+        this.shouldBeRecording = false;
+        
         if (this.recognition && this.isRecording) {
-            this.recognition.stop();
+            try {
+                this.recognition.stop();
+            } catch (error) {
+                console.error('Failed to stop note editor speech recognition:', error);
+            }
         }
         
         this.isRecording = false;
         this.voiceBtn.classList.remove('recording');
         this.voiceRecording.style.display = 'none';
+    }
+
+    async checkMicrophonePermission() {
+        try {
+            if (navigator.permissions) {
+                const permission = await navigator.permissions.query({ name: 'microphone' });
+                console.log('Note editor microphone permission:', permission.state);
+                
+                if (permission.state === 'denied') {
+                    alert('Microphone access is denied. Please enable microphone access in your browser settings.');
+                    return false;
+                }
+            }
+            
+            // Test microphone access
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach(track => track.stop());
+            return true;
+        } catch (error) {
+            console.error('Note editor microphone permission check failed:', error);
+            return false;
+        }
+    }
+
+    restartSpeechRecognition() {
+        if (this.shouldBeRecording && this.recognition) {
+            try {
+                this.recognition.start();
+            } catch (error) {
+                console.error('Failed to restart note editor speech recognition:', error);
+                setTimeout(() => this.restartSpeechRecognition(), 1000);
+            }
+        }
     }
 
     // Options functionality

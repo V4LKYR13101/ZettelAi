@@ -27,8 +27,33 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
-      webSecurity: false // Needed for speech recognition
+      webSecurity: false, // Needed for speech recognition
+      allowRunningInsecureContent: true, // Allow mixed content
+      experimentalFeatures: true // Enable experimental web features
     }
+  });
+
+  // Handle permissions for microphone - auto-grant all media permissions
+  mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+    console.log('Permission requested:', permission);
+    if (permission === 'microphone' || permission === 'media' || permission === 'camera' || permission === 'geolocation') {
+      console.log('Auto-granting permission:', permission);
+      callback(true); // Auto-grant media permissions
+    } else {
+      console.log('Auto-granting permission for speech recognition:', permission);
+      callback(true); // Grant all permissions for speech recognition to work
+    }
+  });
+
+  // Also set permission check handler for when permissions are queried
+  mainWindow.webContents.session.setPermissionCheckHandler((webContents, permission, requestingOrigin) => {
+    console.log('Permission check:', permission, 'from:', requestingOrigin);
+    if (permission === 'microphone' || permission === 'media' || permission === 'camera' || permission === 'geolocation') {
+      console.log('Permission check granted for:', permission);
+      return true;
+    }
+    console.log('Permission check granted for speech recognition:', permission);
+    return true; // Grant all permission checks
   });
 
   mainWindow.loadFile(path.join(__dirname, 'chat-new.html'));
@@ -39,6 +64,9 @@ function createWindow() {
     isVisible = true;
     // Start in click-through mode except for the trigger area
     mainWindow.setIgnoreMouseEvents(true, { forward: true });
+    
+    // Open DevTools for debugging - you can see console errors here
+    // mainWindow.webContents.openDevTools({ mode: 'detach' });
   });
 
   // Remove menu bar
