@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notes - Zettel</title>
+    <link rel="stylesheet" href="notes-list.css">
+</head>
+<body>
+    <div class="trigger-area"></div>
+    
+    <div class="notes-panel" id="notesPanel">
+        <div class="notes-header">
+            <div class="header-left">
+                <button class="back-btn" id="backBtn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                </button>
+                <h1>Notes</h1>
+            </div>
+            <div class="header-right">
+                <button class="new-note-btn" id="newNoteBtn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    New Note
+                </button>
+                <button class="search-btn" id="searchBtn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="M21 21l-4.35-4.35"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="search-bar" id="searchBar">
+            <input type="text" placeholder="Search notes..." id="searchInput">
+        </div>
+
+        <div class="notes-container">
+            <div class="notes-grid" id="notesGrid">
+                <!-- Notes will be dynamically populated here -->
+                <div class="note-card" data-note-id="sample">
+                    <div class="note-header">
+                        <h3 class="note-title">Sample Note</h3>
+                        <div class="note-date">2 hours ago</div>
+                    </div>
+                    <div class="note-preview">This is a sample note to show the layout. Click to edit or create new notes using the + button above.</div>
+                    <div class="note-footer">
+                        <div class="note-tags">
+                            <span class="tag">sample</span>
+                            <span class="tag">demo</span>
+                        </div>
+                        <div class="note-actions">
+                            <button class="action-btn edit-btn" title="Edit">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                            </button>
+                            <button class="action-btn delete-btn" title="Delete">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3,6 5,6 21,6"/>
+                                    <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="empty-state" id="emptyState" style="display: none;">
+                <div class="empty-icon">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                        <polyline points="14,2 14,8 20,8"/>
+                    </svg>
+                </div>
+                <h3>No notes yet</h3>
+                <p>Create your first note to get started</p>
+                <button class="create-first-note-btn" id="createFirstNoteBtn">Create Note</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="notes-list.js"></script>
+</body>
+</html>

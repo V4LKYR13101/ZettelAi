@@ -1,0 +1,61 @@
+{
+  "name": "zettel",
+  "version": "1.0.0",
+  "description": "Zettel - AI-powered desktop assistant widget",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build-win": "electron-builder --win",
+    "build-mac": "electron-builder --mac",
+    "build-linux": "electron-builder --linux",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --publish=never"
+  },
+  "keywords": [
+    "electron",
+    "desktop",
+    "widget",
+    "voice",
+    "speech-to-text",
+    "overlay"
+  ],
+  "author": "Kevin",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  },
+  "build": {
+    "appId": "com.thecodesmith.zettel",
+    "productName": "Zettel",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

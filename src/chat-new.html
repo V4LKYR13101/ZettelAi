@@ -1,0 +1,3167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zettel - AI Assistant</title>
+    <style>
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: transparent;
+            color: white;
+            overflow: hidden;
+            user-select: none;
+            -webkit-app-region: no-drag;
+            pointer-events: none; /* Make body click-through by default */
+        }
+
+        /* Trigger area at top of screen */
+        .trigger-area {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px; /* Make trigger area smaller - just 5px at very top */
+            z-index: 1000;
+            background: transparent;
+            cursor: pointer;
+            pointer-events: auto; /* Re-enable pointer events for trigger */
+        }
+
+        /* Main chat panel - starts hidden above screen */
+        .chat-panel {
+            position: fixed;
+            top: -100vh;
+            left: 0;
+            right: 0;
+            height: 60vh;
+            background: rgba(30, 30, 30, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 0 0 24px 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            pointer-events: auto; /* Re-enable pointer events for chat panel */
+        }
+
+        .chat-panel.active {
+            transform: translateY(100vh);
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100% - 80px); /* Subtract header height */
+            padding: 0 24px 24px 24px; /* No top padding since header has its own padding */
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Header */
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px;
+            padding-bottom: 16px;
+            margin-bottom: 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            width: 100%;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header-right {
+            display: flex;
+            gap: 8px;
+        }
+
+        .title-group h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+
+        .icon-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 12px;
+            padding: 12px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        /* Messages area */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 24px;
+            padding-right: 8px;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .welcome-icon {
+            margin-bottom: 16px;
+            opacity: 0.8;
+        }
+
+        .welcome-message h2 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .welcome-message p {
+            font-size: 16px;
+            opacity: 0.8;
+            margin-bottom: 32px;
+        }
+
+        .quick-suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .suggestion-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 12px 20px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+        }
+
+        .suggestion-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Message bubbles */
+        .message {
+            margin-bottom: 16px;
+            display: flex;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 16px 20px;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Markdown styles within messages */
+        .message-content h1,
+        .message-content h2,
+        .message-content h3 {
+            margin: 0.5em 0;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .message-content h1 {
+            font-size: 1.4em;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 0.3em;
+        }
+
+        .message-content h2 {
+            font-size: 1.2em;
+        }
+
+        .message-content h3 {
+            font-size: 1.1em;
+        }
+
+        .message-content p {
+            margin: 0.5em 0;
+            line-height: 1.6;
+        }
+
+        .message-content code {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #e2e8f0;
+        }
+
+        .message-content pre {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 0.5em 0;
+            overflow-x: auto;
+        }
+
+        .message-content pre code {
+            background: none;
+            border: none;
+            padding: 0;
+            color: #e2e8f0;
+            font-size: 0.85em;
+        }
+
+        .message-content strong {
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .message-content em {
+            font-style: italic;
+            color: #e2e8f0;
+        }
+
+        .message-content ul,
+        .message-content ol {
+            margin: 0.5em 0;
+            padding-left: 1.5em;
+        }
+
+        .message-content li {
+            margin: 0.3em 0;
+            line-height: 1.5;
+        }
+
+        .message-content a {
+            color: #60a5fa;
+            text-decoration: underline;
+            text-decoration-color: rgba(96, 165, 250, 0.5);
+            transition: all 0.2s ease;
+        }
+
+        .message-content a:hover {
+            color: #93c5fd;
+            text-decoration-color: #93c5fd;
+        }
+
+        .message-content blockquote {
+            border-left: 3px solid rgba(255, 255, 255, 0.3);
+            margin: 0.5em 0;
+            padding-left: 1em;
+            font-style: italic;
+            opacity: 0.9;
+        }
+
+        /* Enhanced Notes Views */
+        .notes-view {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(20, 20, 20, 0.98);
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .notes-header, .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+
+        .header-left, .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .notes-header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: white;
+            margin: 0;
+        }
+
+        .new-note-btn {
+            background: linear-gradient(135deg, #4A90E2, #5BA3F5);
+            border-color: rgba(74, 144, 226, 0.3);
+        }
+
+        .save-btn {
+            background: linear-gradient(135deg, #4A90E2, #5BA3F5);
+            border-color: rgba(74, 144, 226, 0.3);
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            gap: 8px;
+        }
+
+        .search-bar {
+            padding: 0 24px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .search-bar input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .search-bar input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .notes-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 24px 24px;
+        }
+
+        .notes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+        }
+
+        .note-card {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .note-card:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        }
+
+        .note-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .note-card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+            line-height: 1.3;
+            flex: 1;
+            margin-right: 12px;
+        }
+
+        .note-card-date {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            white-space: nowrap;
+        }
+
+        .note-card-preview {
+            flex: 1;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.5;
+            margin-bottom: 16px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            line-clamp: 4;
+            -webkit-box-orient: vertical;
+        }
+
+        .note-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+        }
+
+        .note-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            background: rgba(74, 144, 226, 0.2);
+            color: rgba(74, 144, 226, 1);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .note-actions {
+            display: flex;
+            gap: 6px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .note-card:hover .note-actions {
+            opacity: 1;
+        }
+
+        .action-btn {
+            padding: 6px;
+            width: 32px;
+            height: 32px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .delete-btn:hover {
+            background: rgba(220, 53, 69, 0.2);
+            border-color: rgba(220, 53, 69, 0.4);
+            color: #dc3545;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            height: 400px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .empty-icon {
+            margin-bottom: 24px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: white;
+        }
+
+        .empty-state p {
+            font-size: 16px;
+            margin-bottom: 24px;
+        }
+
+        .create-first-note-btn {
+            background: linear-gradient(135deg, #4A90E2, #5BA3F5);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .create-first-note-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(74, 144, 226, 0.3);
+        }
+
+        /* Note Editor Styles */
+        .note-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .status-indicator {
+            font-size: 12px;
+            color: #28a745;
+        }
+
+        .status-indicator.saving {
+            color: #ffc107;
+        }
+
+        .status-indicator.error {
+            color: #dc3545;
+        }
+
+        .editor-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .title-section {
+            padding: 24px 24px 16px;
+        }
+
+        .note-title-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 32px;
+            font-weight: 700;
+            line-height: 1.2;
+            resize: none;
+            outline: none;
+            user-select: text;
+        }
+
+        .note-title-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .metadata-section {
+            padding: 0 24px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .tags-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .tags-input-wrapper {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 8px 12px;
+            min-height: 40px;
+            flex-wrap: wrap;
+        }
+
+        .tags-display {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .tag-remove {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            padding: 0;
+            width: 14px;
+            height: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 2px;
+            font-size: 10px;
+        }
+
+        .tag-remove:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .tags-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 14px;
+            outline: none;
+            min-width: 120px;
+        }
+
+        .tags-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .note-info {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .editor-area {
+            flex: 1;
+            padding: 0 24px 24px;
+            overflow: hidden;
+        }
+
+        .note-content-textarea {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 16px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            user-select: text;
+            font-family: inherit;
+        }
+
+        .note-content-textarea::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .options-dropdown {
+            position: absolute;
+            top: 70px;
+            right: 24px;
+            background: rgba(40, 40, 40, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            padding: 8px;
+            min-width: 160px;
+            z-index: 1000;
+        }
+
+        .dropdown-item {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-align: left;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .dropdown-item.danger {
+            color: #dc3545;
+        }
+
+        .dropdown-item.danger:hover {
+            background: rgba(220, 53, 69, 0.1);
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 4px 0;
+        }
+
+        /* Input area */
+        .chat-input-area {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .input-container {
+            display: flex;
+            align-items: flex-end;
+            gap: 12px;
+        }
+
+        #chatTextarea {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: white;
+            font-size: 16px;
+            resize: none;
+            min-height: 24px;
+            max-height: 120px;
+            line-height: 1.5;
+        }
+
+        #chatTextarea::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .input-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .voice-btn, .send-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 12px;
+            padding: 12px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .voice-btn:hover, .send-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .voice-btn.recording {
+            background: #ef4444;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Voice recording overlay */
+        .voice-recording {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(30, 30, 30, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 32px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 1001;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            pointer-events: auto; /* Re-enable pointer events for voice recording */
+        }
+
+        .voice-recording.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .recording-animation {
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .pulse {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.3);
+            animation: pulseRing 2s infinite;
+        }
+
+        @keyframes pulseRing {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+        }
+
+        .stop-btn {
+            background: #ef4444;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin-top: 16px;
+        }
+
+        .stop-btn:hover {
+            background: #dc2626;
+            transform: scale(1.05);
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .chat-container {
+                padding: 16px;
+                max-width: 100%;
+            }
+            
+            .chat-header {
+                margin-bottom: 16px;
+            }
+            
+            .title-group h1 {
+                font-size: 20px;
+            }
+            
+            .quick-suggestions {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .suggestion-btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+
+        /* Settings Panel */
+        .settings-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(20, 20, 20, 0.98);
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .settings-content {
+            padding: 24px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .settings-header h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .settings-sections {
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        .settings-section {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .settings-section h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+            color: #ffffff;
+        }
+
+        .setting-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .setting-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .setting-select,
+        .setting-input,
+        .setting-textarea {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .setting-select:focus,
+        .setting-input:focus,
+        .setting-textarea:focus {
+            outline: none;
+            border-color: #007acc;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .setting-range {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+        }
+
+        .range-value {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-left: 8px;
+        }
+
+        .provider-settings {
+            margin-left: 16px;
+            padding-left: 16px;
+            border-left: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .settings-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .save-btn,
+        .reset-btn {
+            flex: 1;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .save-btn {
+            background: #007acc;
+            border: 1px solid #007acc;
+            color: white;
+        }
+
+        .save-btn:hover {
+            background: #005a9e;
+            border-color: #005a9e;
+        }
+
+        .reset-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .reset-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        /* Notes Panel */
+        .notes-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(20, 20, 20, 0.98);
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            overflow: hidden;
+        }
+
+        .notes-content {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 24px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .notes-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .notes-header h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .notes-header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .notes-search {
+            margin-bottom: 24px;
+        }
+
+        .notes-search-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .notes-search-input:focus {
+            outline: none;
+            border-color: #007acc;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .notes-list-view {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .notes-search {
+            margin-bottom: 20px;
+        }
+
+        .notes-list {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+        }
+
+        .note-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .note-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .note-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .note-item-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0;
+            color: white;
+        }
+
+        .note-item-date {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .note-item-preview {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .note-editor-view {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 400px;
+        }
+
+        .note-editor-header {
+            margin-bottom: 16px;
+        }
+
+        .note-title-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        .note-title-input:focus {
+            outline: none;
+            border-color: #007acc;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .note-editor-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .note-content-editor {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 16px;
+            color: white;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            transition: all 0.2s ease;
+            min-height: 250px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .note-content-editor:focus {
+            outline: none;
+            border-color: #007acc;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .save-note-btn {
+            background: #007acc;
+            border: 1px solid #007acc;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .save-note-btn:hover {
+            background: #005a9e;
+            border-color: #005a9e;
+        }
+
+        .delete-note-btn {
+            background: #dc3545;
+            border: 1px solid #dc3545;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .delete-note-btn:hover {
+            background: #c82333;
+            border-color: #c82333;
+        }
+
+        .back-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.8);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .empty-notes {
+            text-align: center;
+            padding: 48px 24px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .empty-notes h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .notes-empty {
+            text-align: center;
+            padding: 48px 24px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+        }
+
+        /* Simple Notes System */
+        .add-note-btn {
+            background: #007acc;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .add-note-btn:hover {
+            background: #005a9e;
+        }
+
+        .simple-notes-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .simple-note-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .simple-note-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .simple-note-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 8px;
+        }
+
+        .simple-note-preview {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.4;
+        }
+
+        .simple-note-date {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Trigger area at top of screen -->
+    <div id="triggerArea" class="trigger-area"></div>
+    
+    <!-- Main sliding panel -->
+    <div id="chatPanel" class="chat-panel">
+        <!-- Header with controls - now full width -->
+        <div class="chat-header">
+            <div class="header-left" >
+                <button id="backBtn" class="icon-btn" title="Minimize">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M19 12H5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <div class="title-group" style="opacity: 0 !important;">
+                    <h1>Zettel</h1>
+                    <span id="chatSubtitle" class="subtitle">AI Assistant</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button id="notesBtn" class="icon-btn" title="Notes">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2"/>
+                        <polyline points="14,2 14,8 20,8" stroke="currentColor" stroke-width="2"/>
+                        <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2"/>
+                        <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2"/>
+                        <polyline points="10,9 9,9 8,9" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                </button>
+                <button id="newChatBtn" class="icon-btn" title="New Chat">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <button id="chatSettingsBtn" class="icon-btn" title="Settings">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <div class="chat-container">
+            <!-- Chat messages area -->
+            <div id="chatMessages" class="chat-messages">
+                <div class="welcome-message">
+                    <div class="welcome-icon">
+                        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                            <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="2"/>
+                            <path d="M16 24C16 24 20 28 24 28S32 24 32 24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <circle cx="18" cy="18" r="2" fill="currentColor"/>
+                            <circle cx="30" cy="18" r="2" fill="currentColor"/>
+                        </svg>
+                    </div>
+                    <h2>Welcome to Zettel!</h2>
+                    <p>I'm your AI assistant. Ask me anything or start a conversation.</p>
+                    <div class="quick-suggestions">
+                        <button class="suggestion-btn" data-suggestion="What can you help me with?">
+                            💡 What can you help me with?
+                        </button>
+                        <button class="suggestion-btn" data-suggestion="Help me with my meeting">
+                            📅 Help me with my meeting
+                        </button>
+                        <button class="suggestion-btn" data-suggestion="Write a quick email">
+                            ✉️ Write a quick email
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings panel (hidden by default) -->
+            <div id="settingsPanel" class="settings-panel" style="display: none;">
+                <div class="settings-content">
+                    <div class="settings-header">
+                        <h2>Settings</h2>
+                        <button id="closeSettingsBtn" class="icon-btn" title="Close Settings">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+                                <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div class="settings-sections">
+                        <!-- AI Provider Section -->
+                        <div class="settings-section">
+                            <h3>AI Provider</h3>
+                            <div class="setting-group">
+                                <label class="setting-label">Select AI Provider</label>
+                                <select class="setting-select" id="aiProvider">
+                                    <option value="openai">OpenAI (GPT)</option>
+                                    <option value="gemini">Google Gemini</option>
+                                    <option value="openrouter">OpenRouter</option>
+                                </select>
+                            </div>
+
+                            <!-- OpenAI Settings -->
+                            <div class="provider-settings" id="openaiSettings">
+                                <div class="setting-group">
+                                    <label class="setting-label">OpenAI API Key</label>
+                                    <input type="password" class="setting-input" id="openaiApiKey" placeholder="sk-...">
+                                </div>
+                                <div class="setting-group">
+                                    <label class="setting-label">Model</label>
+                                    <select class="setting-select" id="openaiModel">
+                                        <option value="gpt-4o">GPT-4o</option>
+                                        <option value="gpt-4o-mini">GPT-4o Mini</option>
+                                        <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Gemini Settings -->
+                            <div class="provider-settings" id="geminiSettings" style="display: none;">
+                                <div class="setting-group">
+                                    <label class="setting-label">Gemini API Key</label>
+                                    <input type="password" class="setting-input" id="geminiApiKey" placeholder="Your Gemini API key">
+                                </div>
+                                <div class="setting-group">
+                                    <label class="setting-label">Model</label>
+                                    <select class="setting-select" id="geminiModel">
+                                        <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                                        <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                                        <option value="gemini-pro">Gemini Pro</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- OpenRouter Settings -->
+                            <div class="provider-settings" id="openrouterSettings" style="display: none;">
+                                <div class="setting-group">
+                                    <label class="setting-label">OpenRouter API Key</label>
+                                    <input type="password" class="setting-input" id="openrouterApiKey" placeholder="Your OpenRouter API key">
+                                </div>
+                                <div class="setting-group">
+                                    <label class="setting-label">Model</label>
+                                    <select class="setting-select" id="openrouterModel">
+                                        <option value="openai/gpt-oss-20b:free">GPT-OSS 20B (Free)</option>
+                                        <option value="qwen/qwen3-coder:free">Qwen3 Coder (Free)</option>
+                                        <option value="google/gemma-3n-e4b-it:free">Gemma 3n E4B IT (Free)</option>
+                                        <option value="deepseek/deepseek-chat-v3-0324:free">DeepSeek Chat v3 (Free)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Advanced Settings -->
+                        <div class="settings-section">
+                            <h3>Advanced</h3>
+                            <div class="setting-group">
+                                <label class="setting-label">Temperature</label>
+                                <input type="range" class="setting-range" id="temperature" min="0" max="1" step="0.1" value="0.7">
+                                <span class="range-value">0.7</span>
+                            </div>
+                            <div class="setting-group">
+                                <label class="setting-label">Max Tokens</label>
+                                <input type="number" class="setting-input" id="maxTokens" value="500" min="1" max="4000">
+                            </div>
+                            <div class="setting-group">
+                                <label class="setting-label">System Prompt</label>
+                                <textarea class="setting-textarea" id="systemPrompt" rows="3" placeholder="System instructions for the AI..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-actions">
+                        <button id="saveSettingsBtn" class="save-btn">Save Settings</button>
+                        <button id="resetSettingsBtn" class="reset-btn">Reset to Defaults</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes panel (hidden by default) -->
+            <div id="notesPanel" class="notes-panel" style="display: none;">
+                <div class="notes-content">
+                    <div class="notes-header">
+                        <h2>My Notes</h2>
+                        <div class="notes-header-actions">
+                            <button id="addNoteBtn" class="add-note-btn">+ Add Note</button>
+                            <button id="closeNotesBtn" class="icon-btn" title="Close">×</button>
+                        </div>
+                    </div>
+                    
+                    <div id="notesList" class="simple-notes-list">
+                        <!-- Notes will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Notes List View -->
+            <div id="notesListView" class="notes-view" style="display: none;">
+                <div class="notes-header">
+                    <div class="header-left">
+                        <button id="notesBackBtn" class="icon-btn" title="Back to Chat">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 12H5M12 19l-7-7 7-7"/>
+                            </svg>
+                        </button>
+                        <h1>Notes</h1>
+                    </div>
+                    <div class="header-right">
+                        <button id="newNoteBtn" class="icon-btn new-note-btn" title="New Note">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 5v14M5 12h14"/>
+                            </svg>
+                        </button>
+                        <button id="searchNotesBtn" class="icon-btn" title="Search">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <path d="M21 21l-4.35-4.35"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="searchBar" class="search-bar" style="display: none;">
+                    <input type="text" id="searchInput" placeholder="Search notes..." />
+                </div>
+
+                <div class="notes-container">
+                    <div id="notesGrid" class="notes-grid">
+                        <!-- Notes will be dynamically populated here -->
+                    </div>
+
+                    <div id="emptyState" class="empty-state" style="display: none;">
+                        <div class="empty-icon">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                                <polyline points="14,2 14,8 20,8"/>
+                            </svg>
+                        </div>
+                        <h3>No notes yet</h3>
+                        <p>Create your first note to get started</p>
+                        <button id="createFirstNoteBtn" class="create-first-note-btn">Create Note</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Note Editor View -->
+            <div id="noteEditorView" class="notes-view" style="display: none;">
+                <div class="editor-header">
+                    <div class="header-left">
+                        <button id="editorBackBtn" class="icon-btn" title="Back to Notes">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 12H5M12 19l-7-7 7-7"/>
+                            </svg>
+                        </button>
+                        <div class="note-status">
+                            <span id="statusIndicator" class="status-indicator">●</span>
+                            <span id="statusText" class="status-text">Saved</span>
+                        </div>
+                    </div>
+                    <div class="header-right">
+                        <button id="voiceNoteBtn" class="icon-btn" title="Voice to text">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                <line x1="12" y1="19" x2="12" y2="23"/>
+                                <line x1="8" y1="23" x2="16" y2="23"/>
+                            </svg>
+                        </button>
+                        <button id="saveNoteBtn" class="icon-btn save-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                <polyline points="17,21 17,13 7,13 7,21"/>
+                                <polyline points="7,3 7,8 15,8"/>
+                            </svg>
+                        </button>
+                        <button id="noteOptionsBtn" class="icon-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="1"/>
+                                <circle cx="12" cy="5" r="1"/>
+                                <circle cx="12" cy="19" r="1"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="editor-content">
+                    <div class="title-section">
+                        <input type="text" id="noteTitleInput" class="note-title-input" placeholder="Note title..." maxlength="200">
+                    </div>
+
+                    <div class="metadata-section">
+                        <div class="tags-container">
+                            <div class="tags-input-wrapper">
+                                <div id="tagsDisplay" class="tags-display"></div>
+                                <input type="text" id="tagsInput" class="tags-input" placeholder="Add tags..." autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="note-info">
+                            <span id="wordCount" class="word-count">0 words</span>
+                            <span id="charCount" class="char-count">0 characters</span>
+                            <span id="lastModified" class="last-modified">Never saved</span>
+                        </div>
+                    </div>
+
+                    <div class="editor-area">
+                        <textarea id="noteContentTextarea" class="note-content-textarea" placeholder="Start writing your note..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Options dropdown -->
+                <div id="noteOptionsDropdown" class="options-dropdown" style="display: none;">
+                    <button id="exportNoteBtn" class="dropdown-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7,10 12,15 17,10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        Export Note
+                    </button>
+                    <button id="duplicateNoteBtn" class="dropdown-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                        Duplicate Note
+                    </button>
+                    <div class="dropdown-divider"></div>
+                    <button id="deleteNoteBtn" class="dropdown-item danger">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3,6 5,6 21,6"/>
+                            <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/>
+                        </svg>
+                        Delete Note
+                    </button>
+                </div>
+            </div>
+
+            <!-- Input area -->
+            <div class="chat-input-area">
+                <div class="input-container">
+                    <textarea 
+                        id="chatTextarea" 
+                        placeholder="Ask me anything... (Press Enter to send)"
+                        rows="1"
+                    ></textarea>
+                    <div class="input-actions">
+                        <button id="voiceBtn" class="voice-btn" title="Voice Input">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" stroke="currentColor" stroke-width="2"/>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="currentColor" stroke-width="2"/>
+                                <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" stroke-width="2"/>
+                                <line x1="8" y1="23" x2="16" y2="23" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                        </button>
+                        <button id="sendBtn" class="send-btn" title="Send Message">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <line x1="22" y1="2" x2="11" y2="13" stroke="currentColor" stroke-width="2"/>
+                                <polygon points="22,2 15,22 11,13 2,9" stroke="currentColor" stroke-width="2" fill="currentColor"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Voice recording indicator -->
+    <div id="voiceRecording" class="voice-recording">
+        <div class="recording-content">
+            <div class="recording-animation">
+                <div class="pulse"></div>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" fill="currentColor"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <p>Listening...</p>
+            <button id="stopRecording" class="stop-btn">Stop</button>
+        </div>
+    </div>
+
+    <script src="ai-service.js"></script>
+    <script>
+        class ChatInterface {
+            constructor() {
+                this.isExpanded = false;
+                this.isRecording = false;
+                this.recognition = null;
+                this.aiService = new AIService();
+                this.messages = [];
+                this.currentConversationId = null;
+                this.hideTimeout = null; // For delayed hiding on mouse leave
+                
+                // Notes state
+                this.notes = [];
+                
+                this.initElements();
+                this.initSpeechRecognition();
+                this.bindEvents();
+                this.loadSettings();
+                this.loadNotes();
+            }
+
+            initElements() {
+                this.elements = {
+                    triggerArea: document.getElementById('triggerArea'),
+                    chatPanel: document.getElementById('chatPanel'),
+                    backBtn: document.getElementById('backBtn'),
+                    newChatBtn: document.getElementById('newChatBtn'),
+                    historyBtn: document.getElementById('historyBtn'),
+                    chatSettingsBtn: document.getElementById('chatSettingsBtn'),
+                    chatMessages: document.getElementById('chatMessages'),
+                    chatTextarea: document.getElementById('chatTextarea'),
+                    voiceBtn: document.getElementById('voiceBtn'),
+                    sendBtn: document.getElementById('sendBtn'),
+                    chatSubtitle: document.getElementById('chatSubtitle'),
+                    voiceRecording: document.getElementById('voiceRecording'),
+                    stopRecording: document.getElementById('stopRecording'),
+                    // Settings panel elements
+                    settingsPanel: document.getElementById('settingsPanel'),
+                    closeSettingsBtn: document.getElementById('closeSettingsBtn'),
+                    saveSettingsBtn: document.getElementById('saveSettingsBtn'),
+                    resetSettingsBtn: document.getElementById('resetSettingsBtn'),
+                    aiProvider: document.getElementById('aiProvider'),
+                    openaiApiKey: document.getElementById('openaiApiKey'),
+                    openaiModel: document.getElementById('openaiModel'),
+                    geminiApiKey: document.getElementById('geminiApiKey'),
+                    geminiModel: document.getElementById('geminiModel'),
+                    openrouterApiKey: document.getElementById('openrouterApiKey'),
+                    openrouterModel: document.getElementById('openrouterModel'),
+                    temperature: document.getElementById('temperature'),
+                    maxTokens: document.getElementById('maxTokens'),
+                    systemPrompt: document.getElementById('systemPrompt'),
+                    openaiSettings: document.getElementById('openaiSettings'),
+                    geminiSettings: document.getElementById('geminiSettings'),
+                    openrouterSettings: document.getElementById('openrouterSettings'),
+                    // Notes panel elements
+                    notesBtn: document.getElementById('notesBtn'),
+                    notesPanel: document.getElementById('notesPanel'),
+                    closeNotesBtn: document.getElementById('closeNotesBtn'),
+                    addNoteBtn: document.getElementById('addNoteBtn'),
+                    notesList: document.getElementById('notesList'),
+                    // Enhanced notes elements
+                    notesListView: document.getElementById('notesListView'),
+                    noteEditorView: document.getElementById('noteEditorView'),
+                    notesBackBtn: document.getElementById('notesBackBtn'),
+                    newNoteBtn: document.getElementById('newNoteBtn'),
+                    searchNotesBtn: document.getElementById('searchNotesBtn'),
+                    searchBar: document.getElementById('searchBar'),
+                    searchInput: document.getElementById('searchInput'),
+                    notesGrid: document.getElementById('notesGrid'),
+                    emptyState: document.getElementById('emptyState'),
+                    createFirstNoteBtn: document.getElementById('createFirstNoteBtn'),
+                    // Editor elements
+                    editorBackBtn: document.getElementById('editorBackBtn'),
+                    statusIndicator: document.getElementById('statusIndicator'),
+                    statusText: document.getElementById('statusText'),
+                    voiceNoteBtn: document.getElementById('voiceNoteBtn'),
+                    saveNoteBtn: document.getElementById('saveNoteBtn'),
+                    noteOptionsBtn: document.getElementById('noteOptionsBtn'),
+                    noteTitleInput: document.getElementById('noteTitleInput'),
+                    tagsDisplay: document.getElementById('tagsDisplay'),
+                    tagsInput: document.getElementById('tagsInput'),
+                    wordCount: document.getElementById('wordCount'),
+                    charCount: document.getElementById('charCount'),
+                    lastModified: document.getElementById('lastModified'),
+                    noteContentTextarea: document.getElementById('noteContentTextarea'),
+                    noteOptionsDropdown: document.getElementById('noteOptionsDropdown'),
+                    exportNoteBtn: document.getElementById('exportNoteBtn'),
+                    duplicateNoteBtn: document.getElementById('duplicateNoteBtn'),
+                    deleteNoteBtn: document.getElementById('deleteNoteBtn')
+                };
+            }
+
+            initSpeechRecognition() {
+                if ('webkitSpeechRecognition' in window) {
+                    this.recognition = new webkitSpeechRecognition();
+                    this.recognition.continuous = false;
+                    this.recognition.interimResults = true;
+                    this.recognition.lang = 'en-US';
+
+                    this.recognition.onstart = () => {
+                        this.isRecording = true;
+                        this.updateRecordingState(true);
+                    };
+
+                    this.recognition.onresult = (event) => {
+                        let finalTranscript = '';
+                        let interimTranscript = '';
+
+                        for (let i = event.resultIndex; i < event.results.length; i++) {
+                            const transcript = event.results[i][0].transcript;
+                            if (event.results[i].isFinal) {
+                                finalTranscript += transcript;
+                            } else {
+                                interimTranscript += transcript;
+                            }
+                        }
+
+                        this.elements.chatTextarea.value = finalTranscript + interimTranscript;
+                        
+                        if (finalTranscript) {
+                            this.sendMessage(finalTranscript);
+                        }
+                    };
+
+                    this.recognition.onerror = (event) => {
+                        console.error('Speech recognition error:', event.error);
+                        this.updateRecordingState(false);
+                    };
+
+                    this.recognition.onend = () => {
+                        this.isRecording = false;
+                        this.updateRecordingState(false);
+                    };
+                }
+            }
+
+            bindEvents() {
+                // Listen for window blur events
+                if (window.electronAPI && window.electronAPI.onWindowBlur) {
+                    window.electronAPI.onWindowBlur(() => {
+                        if (this.isExpanded) {
+                            this.minimizeChat();
+                        }
+                    });
+                }
+
+                // Global mouse movement detection for trigger area
+                document.addEventListener('mousemove', (e) => {
+                    // Only activate if mouse is in the very top 5px of screen
+                    if (e.clientY <= 5 && !this.isExpanded) {
+                        this.expandChat();
+                    }
+                });
+
+                // Hide chat when mouse leaves the chat panel (with small delay)
+                this.elements.chatPanel.addEventListener('mouseleave', () => {
+                    if (this.isExpanded) {
+                        // Add a small delay before hiding to prevent accidental dismissal
+                        this.hideTimeout = setTimeout(() => {
+                            this.minimizeChat();
+                        }, 300); // 300ms delay
+                    }
+                });
+
+                // Cancel hiding if mouse enters chat panel again
+                this.elements.chatPanel.addEventListener('mouseenter', () => {
+                    if (this.hideTimeout) {
+                        clearTimeout(this.hideTimeout);
+                        this.hideTimeout = null;
+                    }
+                });
+
+                // Trigger area hover to show chat (backup)
+                this.elements.triggerArea.addEventListener('mouseenter', () => {
+                    if (!this.isExpanded) {
+                        this.expandChat();
+                    }
+                });
+
+                // Click trigger area to show chat
+                this.elements.triggerArea.addEventListener('click', () => {
+                    if (!this.isExpanded) {
+                        this.expandChat();
+                    }
+                });
+
+                // Back button to minimize
+                this.elements.backBtn.addEventListener('click', () => {
+                    this.minimizeChat();
+                });
+
+                // Settings button
+                this.elements.chatSettingsBtn.addEventListener('click', () => {
+                    this.showSettings();
+                });
+
+                // Close settings button
+                this.elements.closeSettingsBtn.addEventListener('click', () => {
+                    this.hideSettings();
+                });
+
+                // Save settings button
+                this.elements.saveSettingsBtn.addEventListener('click', () => {
+                    this.saveSettings();
+                });
+
+                // Reset settings button
+                this.elements.resetSettingsBtn.addEventListener('click', () => {
+                    this.resetSettings();
+                });
+
+                // AI Provider change handler
+                this.elements.aiProvider.addEventListener('change', () => {
+                    this.updateProviderSettings();
+                });
+
+                // Notes button
+                this.elements.notesBtn.addEventListener('click', () => {
+                    this.showNotes();
+                });
+
+                // Close notes button
+                this.elements.closeNotesBtn.addEventListener('click', () => {
+                    this.hideNotes();
+                });
+
+                // Add note button
+                this.elements.addNoteBtn.addEventListener('click', () => {
+                    this.addNewNote();
+                });
+
+                // Temperature range value display
+                this.elements.temperature.addEventListener('input', (e) => {
+                    const rangeValue = e.target.parentElement.querySelector('.range-value');
+                    rangeValue.textContent = e.target.value;
+                });
+
+                // New chat button
+                this.elements.newChatBtn.addEventListener('click', () => {
+                    this.startNewChat();
+                });
+
+                // Voice and send buttons
+                this.elements.voiceBtn.addEventListener('click', () => {
+                    this.toggleRecording();
+                });
+
+                this.elements.sendBtn.addEventListener('click', () => {
+                    this.sendCurrentMessage();
+                });
+
+                this.elements.stopRecording.addEventListener('click', () => {
+                    this.stopRecording();
+                });
+
+                // Textarea events
+                this.elements.chatTextarea.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendCurrentMessage();
+                    }
+                });
+
+                this.elements.chatTextarea.addEventListener('input', () => {
+                    this.autoResizeTextarea();
+                });
+
+                // Enhanced Notes Event Listeners
+                this.elements.notesBackBtn.addEventListener('click', () => {
+                    this.showChatView();
+                });
+
+                this.elements.newNoteBtn.addEventListener('click', () => {
+                    this.createNewNote();
+                });
+
+                this.elements.createFirstNoteBtn.addEventListener('click', () => {
+                    this.createNewNote();
+                });
+
+                this.elements.searchNotesBtn.addEventListener('click', () => {
+                    this.toggleSearch();
+                });
+
+                this.elements.searchInput.addEventListener('input', (e) => {
+                    this.searchNotes(e.target.value);
+                });
+
+                this.elements.searchInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        this.toggleSearch();
+                    }
+                });
+
+                // Editor Event Listeners
+                this.elements.editorBackBtn.addEventListener('click', () => {
+                    this.showNotesListView();
+                });
+
+                this.elements.saveNoteBtn.addEventListener('click', () => {
+                    this.saveCurrentNote();
+                });
+
+                this.elements.voiceNoteBtn.addEventListener('click', () => {
+                    this.toggleNoteVoiceRecording();
+                });
+
+                this.elements.noteOptionsBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.toggleNoteOptionsDropdown();
+                });
+
+                this.elements.noteTitleInput.addEventListener('input', () => {
+                    this.handleNoteContentChange();
+                });
+
+                this.elements.noteContentTextarea.addEventListener('input', () => {
+                    this.handleNoteContentChange();
+                });
+
+                this.elements.tagsInput.addEventListener('keydown', (e) => {
+                    this.handleTagsInput(e);
+                });
+
+                this.elements.exportNoteBtn.addEventListener('click', () => {
+                    this.exportCurrentNote();
+                });
+
+                this.elements.duplicateNoteBtn.addEventListener('click', () => {
+                    this.duplicateCurrentNote();
+                });
+
+                this.elements.deleteNoteBtn.addEventListener('click', () => {
+                    this.deleteCurrentNote();
+                });
+
+                // Close dropdown when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!this.elements.noteOptionsDropdown.contains(e.target) && 
+                        !this.elements.noteOptionsBtn.contains(e.target)) {
+                        this.hideNoteOptionsDropdown();
+                    }
+                });
+
+                // Suggestion buttons
+                document.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('suggestion-btn')) {
+                        const suggestion = e.target.getAttribute('data-suggestion');
+                        this.sendMessage(suggestion);
+                    }
+                });
+
+                // ESC to stop recording only
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        if (this.isRecording) {
+                            this.stopRecording();
+                        }
+                    }
+                });
+            }
+
+            expandChat() {
+                if (this.isExpanded) return;
+                
+                this.isExpanded = true;
+                this.elements.chatPanel.classList.add('active');
+                
+                // Make window interactive when chat is expanded
+                if (window.electronAPI && window.electronAPI.setClickThrough) {
+                    window.electronAPI.setClickThrough(false);
+                }
+                
+                setTimeout(() => {
+                    this.elements.chatTextarea.focus();
+                }, 300);
+            }
+
+            minimizeChat() {
+                if (!this.isExpanded) return;
+                
+                this.isExpanded = false;
+                this.elements.chatPanel.classList.remove('active');
+                this.elements.chatTextarea.value = '';
+                
+                // Make window click-through when chat is minimized
+                if (window.electronAPI && window.electronAPI.setClickThrough) {
+                    window.electronAPI.setClickThrough(true);
+                }
+            }
+
+            async sendCurrentMessage() {
+                const message = this.elements.chatTextarea.value.trim();
+                if (!message) return;
+                
+                this.elements.chatTextarea.value = '';
+                this.autoResizeTextarea();
+                await this.sendMessage(message);
+            }
+
+            async sendMessage(message) {
+                if (!message.trim()) return;
+
+                this.clearWelcomeMessage();
+                this.addMessage('user', message);
+                
+                // Add streaming message container
+                const streamingMessageId = this.addStreamingMessage();
+                this.elements.chatSubtitle.textContent = 'Processing your request...';
+
+                try {
+                    let fullResponse = '';
+                    const streamingElement = document.querySelector(`[data-message-id="${streamingMessageId}"] .message-content`);
+                    
+                    // Add cursor for streaming effect
+                    if (streamingElement) {
+                        streamingElement.innerHTML = '<span class="streaming-cursor"></span>';
+                    }
+                    
+                    // Use streaming response
+                    const streamGenerator = this.aiService.generateStreamingResponse(message);
+                    
+                    for await (const chunk of streamGenerator) {
+                        fullResponse += chunk;
+                        if (streamingElement) {
+                            streamingElement.innerHTML = this.renderMarkdown(fullResponse) + '<span class="streaming-cursor"></span>';
+                            this.scrollToBottom();
+                            
+                            // Small delay for natural typing effect
+                            await new Promise(resolve => setTimeout(resolve, 20));
+                        }
+                    }
+                    
+                    // Remove cursor when done and render final markdown
+                    if (streamingElement) {
+                        streamingElement.innerHTML = this.renderMarkdown(fullResponse);
+                    }
+                    
+                    // Update the message in our array
+                    const messageIndex = this.messages.findIndex(m => m.id === streamingMessageId);
+                    if (messageIndex >= 0) {
+                        this.messages[messageIndex].content = fullResponse;
+                    }
+                    
+                    this.elements.chatSubtitle.textContent = 'Ready to help';
+                } catch (error) {
+                    console.error('Error getting AI response:', error);
+                    
+                    // Update streaming message with error
+                    const streamingElement = document.querySelector(`[data-message-id="${streamingMessageId}"] .message-content`);
+                    if (streamingElement) {
+                        streamingElement.textContent = 'Sorry, I encountered an error processing your request. Please check your AI settings and try again.';
+                    }
+                    
+                    this.elements.chatSubtitle.textContent = 'Error processing request';
+                }
+            }
+
+            addMessage(role, content) {
+                const messageId = role + '-' + Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
+                const message = { id: messageId, role, content, timestamp: Date.now() };
+                this.messages.push(message);
+
+                const messageElement = this.createMessageElement(message);
+                this.elements.chatMessages.appendChild(messageElement);
+                this.scrollToBottom();
+                
+                return messageId;
+            }
+
+            addStreamingMessage() {
+                const messageId = 'assistant-' + Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9);
+                const message = { id: messageId, role: 'assistant', content: '', timestamp: Date.now() };
+                this.messages.push(message);
+
+                const messageElement = this.createMessageElement(message);
+                this.elements.chatMessages.appendChild(messageElement);
+                this.scrollToBottom();
+                
+                return messageId;
+            }
+
+            renderMarkdown(text) {
+                if (!text) return '';
+                
+                // Escape HTML to prevent XSS
+                let html = text
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+
+                // Code blocks (```language\ncode\n```)
+                html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, language, code) => {
+                    return `<pre><code class="language-${language || 'text'}">${code.trim()}</code></pre>`;
+                });
+
+                // Inline code (`code`)
+                html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+                // Bold (**text** or __text__)
+                html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                html = html.replace(/__(.*?)__/g, '<strong>$1</strong>');
+
+                // Italic (*text* or _text_)
+                html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+                html = html.replace(/_(.*?)_/g, '<em>$1</em>');
+
+                // Headers (# ## ### etc)
+                html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>');
+                html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>');
+                html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>');
+
+                // Links [text](url)
+                html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+                // Line breaks
+                html = html.replace(/\n\n/g, '</p><p>');
+                html = html.replace(/\n/g, '<br>');
+
+                // Wrap in paragraphs if not already wrapped
+                if (!html.startsWith('<h') && !html.startsWith('<pre') && !html.startsWith('<p>')) {
+                    html = '<p>' + html + '</p>';
+                }
+
+                // Lists (- item or * item or 1. item)
+                html = html.replace(/^[\s]*[-*] (.+)$/gm, '<li>$1</li>');
+                html = html.replace(/^[\s]*\d+\. (.+)$/gm, '<li>$1</li>');
+                
+                // Wrap consecutive <li> elements in <ul> or <ol>
+                html = html.replace(/(<li>.*<\/li>)/gs, (match) => {
+                    return '<ul>' + match + '</ul>';
+                });
+
+                return html;
+            }
+
+            createMessageElement(message) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${message.role}`;
+                messageDiv.setAttribute('data-message-id', message.id);
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'message-content';
+                
+                // Render markdown for assistant messages, plain text for user messages
+                if (message.role === 'assistant') {
+                    contentDiv.innerHTML = this.renderMarkdown(message.content);
+                } else {
+                    contentDiv.textContent = message.content;
+                }
+                
+                messageDiv.appendChild(contentDiv);
+                return messageDiv;
+            }
+
+            addTypingIndicator() {
+                const typingId = 'typing-' + Date.now();
+                const typingDiv = document.createElement('div');
+                typingDiv.className = 'message assistant';
+                typingDiv.setAttribute('data-message-id', typingId);
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'message-content';
+                contentDiv.innerHTML = `
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                        <span style="width: 6px; height: 6px; border-radius: 50%; background: #6b7280; animation: typing 1.4s ease-in-out infinite both;"></span>
+                        <span style="width: 6px; height: 6px; border-radius: 50%; background: #6b7280; animation: typing 1.4s ease-in-out infinite both; animation-delay: 0.16s;"></span>
+                        <span style="width: 6px; height: 6px; border-radius: 50%; background: #6b7280; animation: typing 1.4s ease-in-out infinite both; animation-delay: 0.32s;"></span>
+                    </div>
+                `;
+                
+                typingDiv.appendChild(contentDiv);
+                this.elements.chatMessages.appendChild(typingDiv);
+                this.scrollToBottom();
+                
+                return typingId;
+            }
+
+            removeTypingIndicator(typingId) {
+                const typingElement = document.querySelector(`[data-message-id="${typingId}"]`);
+                if (typingElement) {
+                    typingElement.remove();
+                }
+            }
+
+            clearWelcomeMessage() {
+                const welcomeMessage = this.elements.chatMessages.querySelector('.welcome-message');
+                if (welcomeMessage) {
+                    welcomeMessage.style.display = 'none';
+                }
+            }
+
+            scrollToBottom() {
+                this.elements.chatMessages.scrollTop = this.elements.chatMessages.scrollHeight;
+            }
+
+            autoResizeTextarea() {
+                const textarea = this.elements.chatTextarea;
+                textarea.style.height = 'auto';
+                textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+            }
+
+            toggleRecording() {
+                if (this.isRecording) {
+                    this.stopRecording();
+                } else {
+                    this.startRecording();
+                }
+            }
+
+            startRecording() {
+                if (this.recognition && !this.isRecording) {
+                    this.recognition.start();
+                }
+            }
+
+            stopRecording() {
+                if (this.recognition && this.isRecording) {
+                    this.recognition.stop();
+                }
+            }
+
+            updateRecordingState(recording) {
+                if (recording) {
+                    this.elements.voiceBtn.classList.add('recording');
+                    this.elements.voiceRecording.classList.add('active');
+                } else {
+                    this.elements.voiceBtn.classList.remove('recording');
+                    this.elements.voiceRecording.classList.remove('active');
+                }
+            }
+
+            startNewChat() {
+                this.messages = [];
+                this.currentConversationId = null;
+                this.elements.chatMessages.innerHTML = `
+                    <div class="welcome-message">
+                        <div class="welcome-icon">
+                            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                                <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="2"/>
+                                <path d="M16 24C16 24 20 28 24 28S32 24 32 24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <circle cx="18" cy="18" r="2" fill="currentColor"/>
+                                <circle cx="30" cy="18" r="2" fill="currentColor"/>
+                            </svg>
+                        </div>
+                        <h2>Welcome to Zettel!</h2>
+                        <p>I'm your AI assistant. Ask me anything or start a conversation.</p>
+                        <div class="quick-suggestions">
+                            <button class="suggestion-btn" data-suggestion="What can you help me with?">
+                                💡 What can you help me with?
+                            </button>
+                            <button class="suggestion-btn" data-suggestion="Help me with my meeting">
+                                📅 Help me with my meeting
+                            </button>
+                            <button class="suggestion-btn" data-suggestion="Write a quick email">
+                                ✉️ Write a quick email
+                            </button>
+                        </div>
+                    </div>
+                `;
+                this.elements.chatSubtitle.textContent = 'Ready to help';
+            }
+
+            loadSettings() {
+                // Initialize click-through state
+                if (window.electronAPI && window.electronAPI.setClickThrough) {
+                    window.electronAPI.setClickThrough(true); // Start in click-through mode
+                }
+                
+                try {
+                    const saved = localStorage.getItem('zettelSettings');
+                    if (saved) {
+                        const settings = JSON.parse(saved);
+                        this.aiService.updateSettings(settings);
+                        
+                        const providerInfo = this.aiService.getProviderInfo ? this.aiService.getProviderInfo() : null;
+                        if (providerInfo && providerInfo.configured) {
+                            this.elements.chatSubtitle.textContent = `Connected to ${providerInfo.provider.toUpperCase()}`;
+                        } else {
+                            this.elements.chatSubtitle.textContent = 'Configure AI provider to start';
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error loading settings:', error);
+                }
+            }
+
+            // Settings panel methods
+            showSettings() {
+                this.elements.settingsPanel.style.display = 'block';
+                this.loadSettingsToUI();
+            }
+
+            hideSettings() {
+                this.elements.settingsPanel.style.display = 'none';
+            }
+
+            loadSettingsToUI() {
+                try {
+                    const saved = localStorage.getItem('zettelSettings');
+                    if (saved) {
+                        const settings = JSON.parse(saved);
+                        
+                        // Load AI provider settings
+                        this.elements.aiProvider.value = settings.aiProvider || 'openai';
+                        this.updateProviderSettings();
+                        
+                        // Load provider-specific settings
+                        if (settings.apiKeys) {
+                            this.elements.openaiApiKey.value = settings.apiKeys.openai || '';
+                            this.elements.geminiApiKey.value = settings.apiKeys.gemini || '';
+                            this.elements.openrouterApiKey.value = settings.apiKeys.openrouter || '';
+                        }
+                        if (settings.models) {
+                            this.elements.openaiModel.value = settings.models.openai || 'gpt-4o';
+                            this.elements.geminiModel.value = settings.models.gemini || 'gemini-1.5-pro';
+                            this.elements.openrouterModel.value = settings.models.openrouter || 'openai/gpt-oss-20b:free';
+                        }
+                        
+                        // Load advanced settings
+                        if (settings.advanced) {
+                            this.elements.temperature.value = settings.advanced.temperature || 0.7;
+                            this.elements.maxTokens.value = settings.advanced.maxTokens || 500;
+                            this.elements.systemPrompt.value = settings.advanced.systemPrompt || '';
+                            
+                            // Update temperature display
+                            const rangeValue = this.elements.temperature.parentElement.querySelector('.range-value');
+                            if (rangeValue) rangeValue.textContent = this.elements.temperature.value;
+                        }
+                    } else {
+                        // Load defaults
+                        this.resetSettingsToDefaults();
+                    }
+                } catch (error) {
+                    console.error('Error loading settings to UI:', error);
+                }
+            }
+
+            updateProviderSettings() {
+                const provider = this.elements.aiProvider.value;
+                
+                // Hide all provider settings
+                this.elements.openaiSettings.style.display = 'none';
+                this.elements.geminiSettings.style.display = 'none';
+                this.elements.openrouterSettings.style.display = 'none';
+                
+                // Show selected provider settings
+                switch(provider) {
+                    case 'openai':
+                        this.elements.openaiSettings.style.display = 'block';
+                        break;
+                    case 'gemini':
+                        this.elements.geminiSettings.style.display = 'block';
+                        break;
+                    case 'openrouter':
+                        this.elements.openrouterSettings.style.display = 'block';
+                        break;
+                }
+            }
+
+            saveSettings() {
+                try {
+                    const settings = {
+                        aiProvider: this.elements.aiProvider.value,
+                        apiKeys: {
+                            openai: this.elements.openaiApiKey.value,
+                            gemini: this.elements.geminiApiKey.value,
+                            openrouter: this.elements.openrouterApiKey.value
+                        },
+                        models: {
+                            openai: this.elements.openaiModel.value,
+                            gemini: this.elements.geminiModel.value,
+                            openrouter: this.elements.openrouterModel.value
+                        },
+                        advanced: {
+                            temperature: parseFloat(this.elements.temperature.value),
+                            maxTokens: parseInt(this.elements.maxTokens.value),
+                            systemPrompt: this.elements.systemPrompt.value || 'You are Zettel, a helpful AI assistant integrated into a desktop widget. Provide concise, accurate, and helpful responses. Focus on being practical and actionable in your advice.'
+                        }
+                    };
+
+                    localStorage.setItem('zettelSettings', JSON.stringify(settings));
+                    this.aiService.updateSettings(settings);
+                    
+                    // Update subtitle
+                    const providerInfo = this.aiService.getProviderInfo ? this.aiService.getProviderInfo() : null;
+                    if (providerInfo && providerInfo.configured) {
+                        this.elements.chatSubtitle.textContent = `Connected to ${providerInfo.provider.toUpperCase()}`;
+                    } else {
+                        this.elements.chatSubtitle.textContent = 'Configure AI provider to start';
+                    }
+                    
+                    this.hideSettings();
+                } catch (error) {
+                    console.error('Error saving settings:', error);
+                }
+            }
+
+            resetSettings() {
+                if (confirm('Are you sure you want to reset all settings to defaults?')) {
+                    this.resetSettingsToDefaults();
+                }
+            }
+
+            resetSettingsToDefaults() {
+                this.elements.aiProvider.value = 'openai';
+                this.elements.openaiApiKey.value = '';
+                this.elements.openaiModel.value = 'gpt-4o';
+                this.elements.geminiApiKey.value = '';
+                this.elements.geminiModel.value = 'gemini-1.5-pro';
+                this.elements.openrouterApiKey.value = '';
+                this.elements.openrouterModel.value = 'openai/gpt-oss-20b:free';
+                this.elements.temperature.value = 0.7;
+                this.elements.maxTokens.value = 500;
+                this.elements.systemPrompt.value = 'You are Zettel, a helpful AI assistant integrated into a desktop widget. Provide concise, accurate, and helpful responses. Focus on being practical and actionable in your advice.';
+                
+                // Update temperature display
+                const rangeValue = this.elements.temperature.parentElement.querySelector('.range-value');
+                if (rangeValue) rangeValue.textContent = '0.7';
+                
+                this.updateProviderSettings();
+            }
+
+            // Simple Notes Management
+            loadNotes() {
+                try {
+                    const savedNotes = localStorage.getItem('zettelNotes');
+                    this.notes = savedNotes ? JSON.parse(savedNotes) : [];
+                } catch (error) {
+                    console.error('Error loading notes:', error);
+                    this.notes = [];
+                }
+            }
+
+            saveNotes() {
+                try {
+                    localStorage.setItem('zettelNotes', JSON.stringify(this.notes));
+                } catch (error) {
+                    console.error('Error saving notes:', error);
+                }
+            }
+
+            showNotes() {
+                // Hide chat view and show notes list view
+                this.elements.chatMessages.style.display = 'none';
+                this.elements.notesListView.style.display = 'flex';
+                this.currentView = 'notesList';
+                this.loadNotesList();
+            }
+
+            hideNotes() {
+                this.elements.notesPanel.style.display = 'none';
+            }
+
+            addNewNote() {
+                const title = prompt('Note title:');
+                if (!title) return;
+                
+                const content = prompt('Note content:');
+                if (!content) return;
+
+                const newNote = {
+                    id: Date.now(),
+                    title: title,
+                    content: content,
+                    date: new Date().toLocaleString()
+                };
+
+                this.notes.unshift(newNote);
+                this.saveNotes();
+                this.displayNotesList();
+            }
+
+            displayNotesList() {
+                const notesList = this.elements.notesList;
+                notesList.innerHTML = '';
+
+                if (this.notes.length === 0) {
+                    notesList.innerHTML = '<div class="notes-empty">No notes yet. Click "Add Note" to create your first note!</div>';
+                    return;
+                }
+
+                this.notes.forEach(note => {
+                    const noteElement = document.createElement('div');
+                    noteElement.className = 'simple-note-item';
+                    noteElement.innerHTML = `
+                        <div class="simple-note-title">${note.title}</div>
+                        <div class="simple-note-preview">${note.content.substring(0, 100)}${note.content.length > 100 ? '...' : ''}</div>
+                        <div class="simple-note-date">${note.date}</div>
+                    `;
+                    
+                    noteElement.addEventListener('click', () => {
+                        this.editNote(note);
+                    });
+                    
+                    notesList.appendChild(noteElement);
+                });
+            }
+
+            editNote(note) {
+                const newTitle = prompt('Edit title:', note.title);
+                if (newTitle === null) return;
+                
+                const newContent = prompt('Edit content:', note.content);
+                if (newContent === null) return;
+
+                if (newTitle === '' && newContent === '') {
+                    if (confirm('Delete this note?')) {
+                        this.notes = this.notes.filter(n => n.id !== note.id);
+                        this.saveNotes();
+                        this.displayNotesList();
+                    }
+                    return;
+                }
+
+                note.title = newTitle || 'Untitled';
+                note.content = newContent;
+                note.date = new Date().toLocaleString();
+
+                this.saveNotes();
+                this.displayNotesList();
+            }
+
+            // Enhanced Notes Management Methods
+            showChatView() {
+                this.elements.notesListView.style.display = 'none';
+                this.elements.noteEditorView.style.display = 'none';
+                this.elements.chatMessages.style.display = 'flex';
+                this.currentView = 'chat';
+            }
+
+            showNotesListView() {
+                this.elements.chatMessages.style.display = 'none';
+                this.elements.noteEditorView.style.display = 'none';
+                this.elements.notesListView.style.display = 'flex';
+                this.currentView = 'notesList';
+                this.loadNotesList();
+            }
+
+            showNoteEditorView(noteId = null) {
+                this.elements.chatMessages.style.display = 'none';
+                this.elements.notesListView.style.display = 'none';
+                this.elements.noteEditorView.style.display = 'flex';
+                this.currentView = 'noteEditor';
+                this.loadNoteEditor(noteId);
+            }
+
+            loadNotesList() {
+                const notes = this.getNotes();
+                this.filteredNotes = [...notes];
+                this.renderNotesList();
+            }
+
+            renderNotesList() {
+                if (this.filteredNotes.length === 0) {
+                    this.elements.notesGrid.style.display = 'none';
+                    this.elements.emptyState.style.display = 'flex';
+                } else {
+                    this.elements.emptyState.style.display = 'none';
+                    this.elements.notesGrid.style.display = 'grid';
+                    this.elements.notesGrid.innerHTML = this.filteredNotes.map(note => this.createNoteCard(note)).join('');
+                    this.attachNoteCardListeners();
+                }
+            }
+
+            createNoteCard(note) {
+                const preview = this.truncateText(note.content, 150);
+                const formattedDate = this.formatDate(note.modified || note.created);
+                const tags = note.tags ? note.tags.map(tag => `<span class="tag">${this.escapeHtml(tag)}</span>`).join('') : '';
+                
+                return `
+                    <div class="note-card" data-note-id="${note.id}">
+                        <div class="note-card-header">
+                            <h3 class="note-card-title">${this.escapeHtml(note.title)}</h3>
+                            <div class="note-card-date">${formattedDate}</div>
+                        </div>
+                        <div class="note-card-preview">${this.escapeHtml(preview)}</div>
+                        <div class="note-card-footer">
+                            <div class="note-tags">${tags}</div>
+                            <div class="note-actions">
+                                <button class="action-btn edit-btn" title="Edit" data-note-id="${note.id}">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                    </svg>
+                                </button>
+                                <button class="action-btn delete-btn" title="Delete" data-note-id="${note.id}">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3,6 5,6 21,6"/>
+                                        <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            attachNoteCardListeners() {
+                // Note card click (open for editing)
+                this.elements.notesGrid.querySelectorAll('.note-card').forEach(card => {
+                    card.addEventListener('click', (e) => {
+                        if (e.target.closest('.action-btn')) return;
+                        const noteId = card.dataset.noteId;
+                        this.showNoteEditorView(noteId);
+                    });
+                });
+
+                // Edit buttons
+                this.elements.notesGrid.querySelectorAll('.edit-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const noteId = btn.dataset.noteId;
+                        this.showNoteEditorView(noteId);
+                    });
+                });
+
+                // Delete buttons
+                this.elements.notesGrid.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const noteId = btn.dataset.noteId;
+                        this.deleteNoteById(noteId);
+                    });
+                });
+            }
+
+            createNewNote() {
+                this.showNoteEditorView();
+            }
+
+            loadNoteEditor(noteId = null) {
+                if (noteId) {
+                    this.currentNote = this.getNote(noteId);
+                    if (!this.currentNote) {
+                        this.currentNote = this.createEmptyNote();
+                    }
+                } else {
+                    this.currentNote = this.createEmptyNote();
+                }
+                
+                this.populateEditor();
+                this.updateNoteStatus('saved');
+                this.isDirty = false;
+                this.setupNoteAutoSave();
+            }
+
+            createEmptyNote() {
+                return {
+                    id: this.generateNoteId(),
+                    title: '',
+                    content: '',
+                    tags: [],
+                    created: new Date().toISOString(),
+                    modified: new Date().toISOString()
+                };
+            }
+
+            populateEditor() {
+                this.elements.noteTitleInput.value = this.currentNote.title || '';
+                this.elements.noteContentTextarea.value = this.currentNote.content || '';
+                this.renderNoteTags();
+                this.updateNoteStats();
+                this.updateLastModified();
+            }
+
+            renderNoteTags() {
+                this.elements.tagsDisplay.innerHTML = '';
+                if (this.currentNote.tags && this.currentNote.tags.length > 0) {
+                    this.currentNote.tags.forEach(tag => {
+                        const tagElement = this.createTagElement(tag);
+                        this.elements.tagsDisplay.appendChild(tagElement);
+                    });
+                }
+            }
+
+            createTagElement(tag) {
+                const tagElement = document.createElement('span');
+                tagElement.className = 'tag';
+                tagElement.innerHTML = `
+                    ${this.escapeHtml(tag)}
+                    <button class="tag-remove" data-tag="${this.escapeHtml(tag)}">&times;</button>
+                `;
+                
+                const removeBtn = tagElement.querySelector('.tag-remove');
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.removeNoteTag(tag);
+                });
+                
+                return tagElement;
+            }
+
+            handleTagsInput(e) {
+                if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault();
+                    this.addNoteTag();
+                } else if (e.key === 'Backspace' && e.target.value === '' && this.currentNote.tags.length > 0) {
+                    this.removeNoteTag(this.currentNote.tags[this.currentNote.tags.length - 1]);
+                }
+            }
+
+            addNoteTag() {
+                const tagText = this.elements.tagsInput.value.trim().toLowerCase();
+                if (tagText && !this.currentNote.tags.includes(tagText)) {
+                    this.currentNote.tags.push(tagText);
+                    this.elements.tagsInput.value = '';
+                    this.renderNoteTags();
+                    this.handleNoteContentChange();
+                }
+            }
+
+            removeNoteTag(tag) {
+                this.currentNote.tags = this.currentNote.tags.filter(t => t !== tag);
+                this.renderNoteTags();
+                this.handleNoteContentChange();
+            }
+
+            handleNoteContentChange() {
+                this.isDirty = true;
+                this.updateNoteStatus('unsaved');
+                this.updateNoteStats();
+                
+                if (this.autoSaveTimer) {
+                    clearTimeout(this.autoSaveTimer);
+                }
+                this.autoSaveTimer = setTimeout(() => {
+                    this.saveCurrentNote();
+                }, 2000);
+            }
+
+            setupNoteAutoSave() {
+                if (this.noteAutoSaveInterval) {
+                    clearInterval(this.noteAutoSaveInterval);
+                }
+                this.noteAutoSaveInterval = setInterval(() => {
+                    if (this.isDirty) {
+                        this.saveCurrentNote();
+                    }
+                }, 30000);
+            }
+
+            saveCurrentNote() {
+                if (!this.isDirty) return;
+                
+                this.updateNoteStatus('saving');
+                
+                this.currentNote.title = this.elements.noteTitleInput.value.trim() || 'Untitled Note';
+                this.currentNote.content = this.elements.noteContentTextarea.value;
+                this.currentNote.modified = new Date().toISOString();
+                
+                this.saveNote(this.currentNote);
+                
+                this.isDirty = false;
+                this.updateNoteStatus('saved');
+                this.updateLastModified();
+                
+                if (this.autoSaveTimer) {
+                    clearTimeout(this.autoSaveTimer);
+                    this.autoSaveTimer = null;
+                }
+            }
+
+            updateNoteStatus(status) {
+                switch (status) {
+                    case 'saved':
+                        this.elements.statusIndicator.className = 'status-indicator';
+                        this.elements.statusText.textContent = 'Saved';
+                        this.elements.saveNoteBtn.disabled = true;
+                        break;
+                    case 'unsaved':
+                        this.elements.statusIndicator.className = 'status-indicator';
+                        this.elements.statusText.textContent = 'Unsaved changes';
+                        this.elements.saveNoteBtn.disabled = false;
+                        break;
+                    case 'saving':
+                        this.elements.statusIndicator.className = 'status-indicator saving';
+                        this.elements.statusText.textContent = 'Saving...';
+                        this.elements.saveNoteBtn.disabled = true;
+                        break;
+                    case 'error':
+                        this.elements.statusIndicator.className = 'status-indicator error';
+                        this.elements.statusText.textContent = 'Error saving';
+                        this.elements.saveNoteBtn.disabled = false;
+                        break;
+                }
+            }
+
+            updateNoteStats() {
+                const content = this.elements.noteContentTextarea.value;
+                const words = content.trim() ? content.trim().split(/\s+/).length : 0;
+                const chars = content.length;
+                
+                this.elements.wordCount.textContent = `${words} word${words !== 1 ? 's' : ''}`;
+                this.elements.charCount.textContent = `${chars} character${chars !== 1 ? 's' : ''}`;
+            }
+
+            updateLastModified() {
+                if (this.currentNote.modified) {
+                    const date = new Date(this.currentNote.modified);
+                    this.elements.lastModified.textContent = `Last modified ${this.formatDate(date)}`;
+                } else {
+                    this.elements.lastModified.textContent = 'Never saved';
+                }
+            }
+
+            toggleSearch() {
+                const isVisible = this.elements.searchBar.style.display === 'block';
+                
+                if (isVisible) {
+                    this.elements.searchBar.style.display = 'none';
+                    this.elements.searchInput.value = '';
+                    this.searchNotes('');
+                } else {
+                    this.elements.searchBar.style.display = 'block';
+                    this.elements.searchInput.focus();
+                }
+            }
+
+            searchNotes(query) {
+                const notes = this.getNotes();
+                const searchQuery = query.toLowerCase();
+                
+                if (!searchQuery) {
+                    this.filteredNotes = [...notes];
+                } else {
+                    this.filteredNotes = notes.filter(note => 
+                        note.title.toLowerCase().includes(searchQuery) ||
+                        note.content.toLowerCase().includes(searchQuery) ||
+                        (note.tags && note.tags.some(tag => tag.toLowerCase().includes(searchQuery)))
+                    );
+                }
+                
+                this.renderNotesList();
+            }
+
+            toggleNoteOptionsDropdown() {
+                const isVisible = this.elements.noteOptionsDropdown.style.display === 'block';
+                this.elements.noteOptionsDropdown.style.display = isVisible ? 'none' : 'block';
+            }
+
+            hideNoteOptionsDropdown() {
+                this.elements.noteOptionsDropdown.style.display = 'none';
+            }
+
+            exportCurrentNote() {
+                const content = `# ${this.currentNote.title}\n\n${this.currentNote.content}`;
+                const blob = new Blob([content], { type: 'text/markdown' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${this.currentNote.title || 'note'}.md`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                this.hideNoteOptionsDropdown();
+            }
+
+            duplicateCurrentNote() {
+                const duplicateNote = {
+                    ...this.currentNote,
+                    id: this.generateNoteId(),
+                    title: `${this.currentNote.title} (Copy)`,
+                    created: new Date().toISOString(),
+                    modified: new Date().toISOString()
+                };
+                
+                this.saveNote(duplicateNote);
+                this.showNoteEditorView(duplicateNote.id);
+                this.hideNoteOptionsDropdown();
+            }
+
+            deleteCurrentNote() {
+                if (confirm(`Are you sure you want to delete "${this.currentNote.title}"?`)) {
+                    this.deleteNoteById(this.currentNote.id);
+                    this.showNotesListView();
+                }
+                this.hideNoteOptionsDropdown();
+            }
+
+            toggleNoteVoiceRecording() {
+                if (this.isRecording) {
+                    this.stopRecording();
+                } else {
+                    this.startNoteVoiceRecording();
+                }
+            }
+
+            startNoteVoiceRecording() {
+                if (this.recognition && !this.isRecording) {
+                    this.recognition.onresult = (event) => {
+                        let finalTranscript = '';
+                        
+                        for (let i = event.resultIndex; i < event.results.length; i++) {
+                            const transcript = event.results[i][0].transcript;
+                            if (event.results[i].isFinal) {
+                                finalTranscript += transcript;
+                            }
+                        }
+                        
+                        if (finalTranscript) {
+                            const currentContent = this.elements.noteContentTextarea.value;
+                            const newContent = currentContent + (currentContent ? ' ' : '') + finalTranscript;
+                            this.elements.noteContentTextarea.value = newContent;
+                            this.handleNoteContentChange();
+                        }
+                    };
+                    
+                    this.recognition.start();
+                }
+            }
+
+            // Enhanced note storage methods
+            getNotes() {
+                try {
+                    const notes = localStorage.getItem('zettel-notes');
+                    return notes ? JSON.parse(notes) : [];
+                } catch (error) {
+                    console.error('Error loading notes:', error);
+                    return [];
+                }
+            }
+
+            getNote(noteId) {
+                const notes = this.getNotes();
+                return notes.find(note => note.id === noteId);
+            }
+
+            saveNote(note) {
+                try {
+                    const notes = this.getNotes();
+                    const existingIndex = notes.findIndex(n => n.id === note.id);
+                    
+                    if (existingIndex >= 0) {
+                        notes[existingIndex] = note;
+                    } else {
+                        notes.push(note);
+                    }
+                    
+                    localStorage.setItem('zettel-notes', JSON.stringify(notes));
+                } catch (error) {
+                    console.error('Error saving note:', error);
+                    this.updateNoteStatus('error');
+                }
+            }
+
+            deleteNoteById(noteId) {
+                const note = this.getNote(noteId);
+                if (!note) return;
+
+                if (confirm(`Are you sure you want to delete "${note.title}"?`)) {
+                    try {
+                        const notes = this.getNotes();
+                        const filteredNotes = notes.filter(note => note.id !== noteId);
+                        localStorage.setItem('zettel-notes', JSON.stringify(filteredNotes));
+                        this.loadNotesList();
+                    } catch (error) {
+                        console.error('Error deleting note:', error);
+                    }
+                }
+            }
+
+            // Utility methods
+            generateNoteId() {
+                return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+            }
+
+            truncateText(text, maxLength) {
+                if (text.length <= maxLength) return text;
+                return text.substr(0, maxLength) + '...';
+            }
+
+            formatDate(dateString) {
+                const date = new Date(dateString);
+                const now = new Date();
+                const diff = now - date;
+                
+                const minute = 60 * 1000;
+                const hour = minute * 60;
+                const day = hour * 24;
+                
+                if (diff < minute) {
+                    return 'just now';
+                } else if (diff < hour) {
+                    const mins = Math.floor(diff / minute);
+                    return `${mins} minute${mins > 1 ? 's' : ''} ago`;
+                } else if (diff < day) {
+                    const hours = Math.floor(diff / hour);
+                    return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+                } else if (diff < day * 7) {
+                    const days = Math.floor(diff / day);
+                    return `${days} day${days > 1 ? 's' : ''} ago`;
+                } else {
+                    return date.toLocaleDateString();
+                }
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        /* Add CSS animation for typing indicator */
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes typing {
+                0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+                40% { transform: scale(1); opacity: 1; }
+            }
+            
+            @keyframes blink {
+                0%, 50% { opacity: 1; }
+                51%, 100% { opacity: 0; }
+            }
+            
+            .streaming-cursor {
+                display: inline-block;
+                width: 2px;
+                height: 1em;
+                background: currentColor;
+                margin-left: 2px;
+                animation: blink 1s infinite;
+                vertical-align: text-bottom;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new ChatInterface();
+        });
+    </script>
+</body>
+</html>

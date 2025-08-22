@@ -1,0 +1,463 @@
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: transparent;
+    color: white;
+    overflow: hidden;
+    user-select: none;
+    -webkit-app-region: no-drag;
+    pointer-events: none;
+}
+
+/* Trigger area */
+.trigger-area {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    z-index: 1000;
+    background: transparent;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+/* Main editor panel */
+.editor-panel {
+    position: fixed;
+    top: -100vh;
+    left: 0;
+    right: 0;
+    height: 85vh;
+    background: rgba(30, 30, 30, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 0 0 24px 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+    z-index: 999;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-panel.visible {
+    transform: translateY(100vh);
+}
+
+/* Header */
+.editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    -webkit-app-region: drag;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.back-btn, .voice-btn, .save-btn, .options-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    -webkit-app-region: no-drag;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.back-btn, .voice-btn, .options-btn {
+    padding: 10px;
+    width: 44px;
+    height: 44px;
+    justify-content: center;
+}
+
+.save-btn {
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    background: linear-gradient(135deg, #4A90E2, #5BA3F5);
+    border-color: rgba(74, 144, 226, 0.3);
+}
+
+.back-btn:hover, .voice-btn:hover, .options-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.save-btn:hover {
+    background: linear-gradient(135deg, #5BA3F5, #6BB3FF);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(74, 144, 226, 0.3);
+}
+
+.save-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Note status */
+.note-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.status-indicator {
+    font-size: 12px;
+    color: #28a745;
+}
+
+.status-indicator.saving {
+    color: #ffc107;
+}
+
+.status-indicator.error {
+    color: #dc3545;
+}
+
+/* Editor content */
+.editor-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Title section */
+.title-section {
+    padding: 24px 24px 16px;
+}
+
+.note-title-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.2;
+    resize: none;
+    outline: none;
+    -webkit-app-region: no-drag;
+    user-select: text;
+}
+
+.note-title-input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* Metadata section */
+.metadata-section {
+    padding: 0 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.tags-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.tags-input-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 8px 12px;
+    min-height: 40px;
+    flex-wrap: wrap;
+}
+
+.tags-display {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.tag {
+    background: rgba(74, 144, 226, 0.2);
+    color: rgba(74, 144, 226, 1);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tag-remove {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 0;
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    font-size: 10px;
+}
+
+.tag-remove:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.tags-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 14px;
+    outline: none;
+    min-width: 120px;
+    -webkit-app-region: no-drag;
+}
+
+.tags-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.note-info {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Editor area */
+.editor-area {
+    flex: 1;
+    padding: 0 24px 24px;
+    overflow: hidden;
+}
+
+.note-content-textarea {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 16px;
+    line-height: 1.6;
+    resize: none;
+    outline: none;
+    -webkit-app-region: no-drag;
+    user-select: text;
+    font-family: inherit;
+}
+
+.note-content-textarea::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* Options dropdown */
+.options-dropdown {
+    position: absolute;
+    top: 70px;
+    right: 24px;
+    background: rgba(40, 40, 40, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    padding: 8px;
+    min-width: 160px;
+    z-index: 1000;
+    display: none;
+    -webkit-app-region: no-drag;
+}
+
+.options-dropdown.visible {
+    display: block;
+}
+
+.dropdown-item {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: white;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+}
+
+.dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-item.danger {
+    color: #dc3545;
+}
+
+.dropdown-item.danger:hover {
+    background: rgba(220, 53, 69, 0.1);
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 4px 0;
+}
+
+/* Voice recording */
+.voice-recording {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(40, 40, 40, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 1001;
+    -webkit-app-region: no-drag;
+}
+
+.recording-animation {
+    position: relative;
+    width: 12px;
+    height: 12px;
+}
+
+.recording-pulse {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #dc3545;
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+    }
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+    }
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+    }
+}
+
+.stop-recording-btn {
+    background: rgba(220, 53, 69, 0.2);
+    border: 1px solid rgba(220, 53, 69, 0.4);
+    border-radius: 8px;
+    color: #dc3545;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.stop-recording-btn:hover {
+    background: rgba(220, 53, 69, 0.3);
+}
+
+/* Voice button active state */
+.voice-btn.recording {
+    background: rgba(220, 53, 69, 0.2);
+    border-color: rgba(220, 53, 69, 0.4);
+    color: #dc3545;
+}
+
+/* Scrollbar styling */
+.editor-area::-webkit-scrollbar,
+.note-content-textarea::-webkit-scrollbar {
+    width: 6px;
+}
+
+.editor-area::-webkit-scrollbar-track,
+.note-content-textarea::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+}
+
+.editor-area::-webkit-scrollbar-thumb,
+.note-content-textarea::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+.editor-area::-webkit-scrollbar-thumb:hover,
+.note-content-textarea::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .editor-header {
+        padding: 16px 20px;
+    }
+    
+    .title-section {
+        padding: 20px 20px 12px;
+    }
+    
+    .note-title-input {
+        font-size: 28px;
+    }
+    
+    .metadata-section {
+        padding: 0 20px 12px;
+    }
+    
+    .editor-area {
+        padding: 0 20px 20px;
+    }
+    
+    .note-info {
+        flex-direction: column;
+        gap: 4px;
+    }
+}

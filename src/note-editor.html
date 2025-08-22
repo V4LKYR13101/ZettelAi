@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Note Editor - Zettel</title>
+    <link rel="stylesheet" href="note-editor.css">
+</head>
+<body>
+    <div class="trigger-area"></div>
+    
+    <div class="editor-panel" id="editorPanel">
+        <div class="editor-header">
+            <div class="header-left">
+                <button class="back-btn" id="backBtn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                </button>
+                <div class="note-status">
+                    <span class="status-indicator" id="statusIndicator">●</span>
+                    <span class="status-text" id="statusText">Saved</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="voice-btn" id="voiceBtn" title="Voice to text">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="23"/>
+                        <line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                </button>
+                <button class="save-btn" id="saveBtn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17,21 17,13 7,13 7,21"/>
+                        <polyline points="7,3 7,8 15,8"/>
+                    </svg>
+                    Save
+                </button>
+                <button class="options-btn" id="optionsBtn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="1"/>
+                        <circle cx="12" cy="5" r="1"/>
+                        <circle cx="12" cy="19" r="1"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="editor-content">
+            <div class="title-section">
+                <input type="text" 
+                       class="note-title-input" 
+                       id="noteTitleInput" 
+                       placeholder="Note title..." 
+                       maxlength="200">
+            </div>
+
+            <div class="metadata-section">
+                <div class="tags-container">
+                    <div class="tags-input-wrapper">
+                        <div class="tags-display" id="tagsDisplay"></div>
+                        <input type="text" 
+                               class="tags-input" 
+                               id="tagsInput" 
+                               placeholder="Add tags..."
+                               autocomplete="off">
+                    </div>
+                </div>
+                <div class="note-info">
+                    <span class="word-count" id="wordCount">0 words</span>
+                    <span class="char-count" id="charCount">0 characters</span>
+                    <span class="last-modified" id="lastModified">Never saved</span>
+                </div>
+            </div>
+
+            <div class="editor-area">
+                <textarea class="note-content-textarea" 
+                         id="noteContentTextarea" 
+                         placeholder="Start writing your note..."></textarea>
+            </div>
+        </div>
+
+        <!-- Options dropdown -->
+        <div class="options-dropdown" id="optionsDropdown">
+            <button class="dropdown-item" id="exportBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7,10 12,15 17,10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Export Note
+            </button>
+            <button class="dropdown-item" id="duplicateBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+                Duplicate Note
+            </button>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item danger" id="deleteBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3,6 5,6 21,6"/>
+                    <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/>
+                </svg>
+                Delete Note
+            </button>
+        </div>
+
+        <!-- Voice recording indicator -->
+        <div class="voice-recording" id="voiceRecording" style="display: none;">
+            <div class="recording-animation">
+                <div class="recording-pulse"></div>
+            </div>
+            <span>Listening...</span>
+            <button class="stop-recording-btn" id="stopRecordingBtn">Stop</button>
+        </div>
+    </div>
+
+    <script src="note-editor.js"></script>
+</body>
+</html>
