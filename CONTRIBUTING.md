@@ -13,7 +13,7 @@ Thank you for your interest in contributing to Zettel! This document provides gu
 2. **Installation**
    ```bash
    git clone <repository-url>
-   cd Gluely
+   cd Zettel
    npm install
    ```
 

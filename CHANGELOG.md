@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Auto-save functionality (every 2 seconds)
 - Export capabilities (Markdown format)
 - Note management features (create, edit, duplicate, delete)
-- Beautiful UI matching Cluely.com design aesthetic
+- Beautiful UI with modern design aesthetic
 - Comprehensive settings panel
 - Keyboard shortcuts support
 - Drag-and-drop window functionality

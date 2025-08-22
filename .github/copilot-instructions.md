@@ -2,13 +2,13 @@
 - [x] Verify that the copilot-instructions.md file in the .github directory is created.
 
 - [x] Clarify Project Requirements
-	Electron desktop widget application with speech-to-text, similar to Cluely.com design, translucent overlay, no taskbar visibility
+	AI-powered desktop assistant with integrated note-taking, speech-to-text, translucent overlay, no taskbar visibility
 
 - [x] Scaffold the Project
 	Created Electron app structure with main process, renderer, and necessary dependencies
 
 - [x] Customize the Project
-	Implemented Cluely-style UI, speech recognition, translucent overlay, and desktop widget functionality
+	Implemented beautiful UI, speech recognition, note-taking system, translucent overlay, and desktop widget functionality
 
 - [x] Install Required Extensions
 	No additional extensions needed for Electron development
